@@ -35,6 +35,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # 🔹 Tambahan untuk Proyek 1
+  intl: ^0.18.1          # format tanggal & mata uang
+  fl_chart: ^0.69.0      # grafik statistik
+  file_saver: ^0.2.8
+  csv: ^6.0.0            # export CSV
+  pdf: ^3.10.7           # export PDF
+  path_provider: ^2.0.15 # akses storage lokal
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -86,4 +94,4 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # see https://flutter.dev/to/asset-from-package
