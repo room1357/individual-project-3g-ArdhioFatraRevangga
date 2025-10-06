@@ -42,7 +42,7 @@ dependencies:
   csv: ^6.0.0            # export CSV
   pdf: ^3.10.7           # export PDF
   path_provider: ^2.0.15 # akses storage lokal
-
+  shared_preferences: ^2.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
