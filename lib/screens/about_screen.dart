@@ -6,16 +6,13 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tentang Aplikasi'),
-        backgroundColor: Colors.blue,
-      ),
+      appBar: AppBar(title: const Text('Tentang Aplikasi')),
       body: const Center(
         child: Padding(
-          padding: EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(20),
           child: Text(
-            'Aplikasi ini dibuat untuk latihan navigasi Flutter.\n'
-            'Versi 1.0.0\n\nDikembangkan oleh Ardhio Fatra.',
+            'Aplikasi ini menggabungkan latihan Navigation dan Expense Manager.\n\n'
+            'Didesain oleh Ardhio Fatra dengan Flutter ❤️\nVersi 1.0.0',
             style: TextStyle(fontSize: 18),
             textAlign: TextAlign.center,
           ),

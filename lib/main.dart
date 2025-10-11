@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/about_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,15 +16,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Navigation Demo',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-      },
+      title: 'Expense Manager App',
+      theme: ThemeData(
+        colorSchemeSeed: Colors.blueAccent,
+        useMaterial3: true,
+        fontFamily: 'Poppins',
+      ),
+      home: const LoginScreen(),
     );
   }
 }
