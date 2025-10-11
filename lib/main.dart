@@ -13,19 +13,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Navigation Demo',
       debugShowCheckedModeBanner: false,
-      title: 'Expense Manager',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF7F4F8),
-      ),
-
-      // 🔹 Halaman awal
-      initialRoute: '/login',
-
-      // 🔹 Routing untuk navigasi antar-halaman
+      theme: ThemeData(primarySwatch: Colors.blue),
+      initialRoute: '/',
       routes: {
-        '/login': (context) => const LoginScreen(),
+        '/': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
       },
