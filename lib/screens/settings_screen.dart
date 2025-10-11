@@ -8,25 +8,29 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.green,
+        title: const Text('Pengaturan'),
+        backgroundColor: Colors.blue,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Pengaturan Aplikasi', style: TextStyle(fontSize: 20)),
+            const Text(
+              'Halaman Pengaturan',
+              style: TextStyle(fontSize: 20),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
+                // Navigasi ke halaman About
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => AboutScreen()),
+                  MaterialPageRoute(builder: (context) => const AboutScreen()),
                 );
               },
               child: const Text('Tentang Aplikasi'),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Kembali'),

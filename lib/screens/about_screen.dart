@@ -1,28 +1,24 @@
 import 'package:flutter/material.dart';
 
 class AboutScreen extends StatelessWidget {
- const AboutScreen({super.key});
+  const AboutScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('About'),
-        backgroundColor: Colors.orange,
+        title: const Text('Tentang Aplikasi'),
+        backgroundColor: Colors.blue,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.info_outline, size: 80, color: Colors.orange),
-            SizedBox(height: 20),
-            Text('Aplikasi Latihan Navigation', style: TextStyle(fontSize: 22)),
-            Text('Versi 1.0.0', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Kembali'),
-            ),
-          ],
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Text(
+            'Aplikasi ini dibuat untuk latihan navigasi Flutter.\n'
+            'Versi 1.0.0\n\nDikembangkan oleh Ardhio Fatra.',
+            style: TextStyle(fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );
