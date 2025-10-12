@@ -1,7 +1,2 @@
 import 'package:intl/intl.dart';
-
-class DateUtilsCustom {
-  static String format(DateTime date) {
-    return DateFormat('dd MMM yyyy').format(date);
-  }
-}
+String formatDate(DateTime d) => DateFormat('dd MMM yyyy', 'id_ID').format(d);

@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart'; // 🔹 Tambahan penting
 import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/settings_screen.dart';
-import 'screens/about_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 🟢 Inisialisasi Hive
+  await Hive.initFlutter();
+  await Hive.openBox('users');
+  await Hive.openBox('expenses');
+  await Hive.openBox('categories');
+
+  // 🔹 Tambahkan inisialisasi locale Indonesia
+  await initializeDateFormatting('id_ID', null);
+
   runApp(const MyApp());
 }
 
@@ -17,11 +25,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Expense Manager App',
+      title: 'Expense Manager App Extended',
       theme: ThemeData(
-        colorSchemeSeed: Colors.blueAccent,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
-        fontFamily: 'Poppins',
       ),
       home: const LoginScreen(),
     );
