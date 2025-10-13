@@ -69,6 +69,42 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     }
   }
 
+  // 🗑️ Fungsi hapus dengan dialog konfirmasi
+  Future<void> _deleteExpense(Expense e) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      title: const Text('Hapus Pengeluaran'),
+      content: Text('Yakin ingin menghapus "${e.title}"?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Hapus'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true && e.id != null) {
+    await _svc.deleteExpense(e.id);
+    await _load(); // pastikan nunggu data terbaru
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pengeluaran "${e.title}" berhasil dihapus.'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
+
+
   @override
   Widget build(BuildContext context) {
     final categories = ['Semua','Makanan','Transportasi','Hiburan','Komunikasi','Pendidikan'];
@@ -131,8 +167,19 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
                           ),
                           title: Text(e.title),
                           subtitle: Text('${e.category} • ${e.formattedDate}'),
-                          trailing: Text(e.formattedTotal,
-                              style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                e.formattedTotal,
+                                style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _deleteExpense(e),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },

@@ -8,8 +8,12 @@ class ExpenseService {
 
   // 🟢 Ambil semua pengeluaran
   Future<List<Expense>> getAllExpenses() async {
-    final data = _expenseBox.values.cast<Map>().toList();
-    return data.map((e) => Expense.fromMap(Map<String, dynamic>.from(e))).toList();
+    final data = _expenseBox.toMap(); // 🔹 ambil dengan key agar tahu posisi aslinya
+    return data.entries.map((entry) {
+      final map = Map<String, dynamic>.from(entry.value as Map);
+      map['id'] = entry.key; // 🔹 simpan key Hive sebagai id
+      return Expense.fromMap(map);
+    }).toList();
   }
 
   // 🟢 Tambah pengeluaran
@@ -17,9 +21,11 @@ class ExpenseService {
     await _expenseBox.add(exp.toMap());
   }
 
-  // 🟢 Hapus pengeluaran
-  Future<void> deleteExpense(int index) async {
-    await _expenseBox.deleteAt(index);
+  // 🟢 Hapus pengeluaran berdasarkan id (bukan index tampilan)
+  Future<void> deleteExpense(dynamic id) async {
+    if (_expenseBox.containsKey(id)) {
+      await _expenseBox.delete(id);
+    }
   }
 
   // 🟢 Ambil semua kategori (otomatis isi default kalau kosong)
@@ -37,8 +43,12 @@ class ExpenseService {
       }
     }
 
-    final data = _categoryBox.values.cast<Map>().toList();
-    return data.map((e) => Category.fromMap(Map<String, dynamic>.from(e))).toList();
+    final data = _categoryBox.toMap();
+    return data.entries.map((entry) {
+      final map = Map<String, dynamic>.from(entry.value as Map);
+      map['id'] = entry.key;
+      return Category.fromMap(map);
+    }).toList();
   }
 
   // 🟢 Tambah kategori
@@ -46,8 +56,10 @@ class ExpenseService {
     await _categoryBox.add(cat.toMap());
   }
 
-  // 🟢 Hapus kategori
-  Future<void> deleteCategory(int index) async {
-    await _categoryBox.deleteAt(index);
+  // 🟢 Hapus kategori berdasarkan id Hive
+  Future<void> deleteCategory(dynamic id) async {
+    if (_categoryBox.containsKey(id)) {
+      await _categoryBox.delete(id);
+    }
   }
 }
