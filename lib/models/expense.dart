@@ -1,61 +1,76 @@
 import 'package:intl/intl.dart';
 
 class Expense {
-  final int? id;
+  final dynamic id;          // Hive key
+  final int userId;          // 🔹 pemilik
   final String title;
   final String description;
-  final String category;
+  final String category;     // nama kategori (punya user)
   final double price;
   final int quantity;
   final DateTime date;
+  final List<int> sharedWith; // 🔹 userId lain yang dibagi
 
   Expense({
     this.id,
+    required this.userId,
     required this.title,
     required this.description,
     required this.category,
     required this.price,
     required this.quantity,
     required this.date,
+    this.sharedWith = const [],
   });
 
-  /// 🔹 Hitung total harga: harga × jumlah
   double get total => price * quantity;
 
-  /// 🔹 Format total jadi Rupiah (IDR)
   String get formattedTotal {
-    final format = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
-    return format.format(total);
+    final f = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+    return f.format(total);
   }
 
-  /// 🔹 Format tanggal (contoh: 12 Okt 2025)
   String get formattedDate {
-    final format = DateFormat('dd MMM yyyy', 'id_ID');
-    return format.format(date);
+    final f = DateFormat('dd MMM yyyy', 'id_ID');
+    return f.format(date);
   }
 
-  /// 🔹 Kompatibilitas ke belakang (buat kode lama yg masih pakai `formattedAmount`)
+  // Back-compat
   String get formattedAmount => formattedTotal;
 
-  /// 🔹 Konversi ke Map untuk Hive / SQLite
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'category': category,
-        'price': price,
-        'quantity': quantity,
-        'date': date.toIso8601String(),
-      };
+    'id': id,
+    'userId': userId,
+    'title': title,
+    'description': description,
+    'category': category,
+    'price': price,
+    'quantity': quantity,
+    'date': date.toIso8601String(),
+    'sharedWith': sharedWith,
+  };
 
-  /// 🔹 Konversi dari Map
-  factory Expense.fromMap(Map<String, dynamic> map) => Expense(
-        id: map['id'],
-        title: map['title'],
-        description: map['description'],
-        category: map['category'],
-        price: (map['price'] ?? 0).toDouble(),
-        quantity: map['quantity'] ?? 1,
-        date: DateTime.parse(map['date']),
-      );
+  factory Expense.fromMap(Map<String, dynamic> m) => Expense(
+    id: m['id'],
+    userId: (m['userId'] ?? 0) is String ? int.tryParse(m['userId']) ?? 0 : (m['userId'] ?? 0),
+    title: m['title'],
+    description: m['description'] ?? '',
+    category: m['category'] ?? '',
+    price: (m['price'] ?? 0).toDouble(),
+    quantity: (m['quantity'] ?? 1).toInt(),
+    date: DateTime.tryParse(m['date'] ?? '') ?? DateTime.now(),
+    sharedWith: (m['sharedWith'] is List) ? List<int>.from(m['sharedWith']) : <int>[],
+  );
+
+  Expense copyWith({dynamic id}) => Expense(
+    id: id ?? this.id,
+    userId: userId,
+    title: title,
+    description: description,
+    category: category,
+    price: price,
+    quantity: quantity,
+    date: date,
+    sharedWith: sharedWith,
+  );
 }

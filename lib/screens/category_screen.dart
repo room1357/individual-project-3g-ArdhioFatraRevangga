@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../services/expense_service.dart';
+import '../services/user_service.dart'; // pastikan ada di atas
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -84,8 +85,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
             onPressed: () async {
               if (_nameController.text.trim().isEmpty) return;
 
+              final userId = await UserService().getCurrentUserId(); // ambil id user aktif
               final newCategory = Category(
-                id: category?.id,
+                userId: userId!, // ✅ tambahkan ini
                 name: _nameController.text,
                 icon: _iconController.text.isEmpty ? '🏷️' : _iconController.text,
                 color: _colorController.text.isEmpty ? '#2196F3' : _colorController.text,
