@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import '../services/expense_service.dart';
@@ -13,6 +14,14 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
   final _svc = ExpenseService();
   final _search = TextEditingController();
 
+  // ✅ cache kategori sebagai const (hemat rebuild)
+  static const _categoriesConst = <String>[
+    'Semua','Makanan','Transportasi','Hiburan','Komunikasi','Pendidikan'
+  ];
+
+  // 🔎 optional: debounce biar gak ngefilter tiap ketik 1 huruf
+  Timer? _debounce;
+
   List<Expense> expenses = [];
   List<Expense> filteredExpenses = [];
   String selectedCategory = 'Semua';
@@ -21,6 +30,13 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -36,11 +52,16 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     setState(() {
       filteredExpenses = expenses.where((e) {
         final s = e.title.toLowerCase().contains(q) ||
-            e.description.toLowerCase().contains(q);
+                  e.description.toLowerCase().contains(q);
         final c = selectedCategory == 'Semua' || e.category == selectedCategory;
         return s && c;
       }).toList();
     });
+  }
+
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), _filterExpenses);
   }
 
   double _sum(List<Expense> list) => list.fold(0, (s, e) => s + e.total);
@@ -69,50 +90,55 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
     }
   }
 
-  // 🗑️ Fungsi hapus dengan dialog konfirmasi
+  // 🗑️ Hapus + konfirmasi + refresh + snackbar
   Future<void> _deleteExpense(Expense e) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: const Text('Hapus Pengeluaran'),
-      content: Text('Yakin ingin menghapus "${e.title}"?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Hapus'),
-        ),
-      ],
-    ),
-  );
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Hapus Pengeluaran'),
+        content: Text('Yakin ingin menghapus "${e.title}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
 
-  if (confirm == true && e.id != null) {
-    await _svc.deleteExpense(e.id);
-    await _load(); // pastikan nunggu data terbaru
+    if (confirm == true && e.id != null) {
+      await _svc.deleteExpense(e.id); // ⚠️ pastikan signature service-mu cocok
+      await _load();                  // refresh data dulu
+      _filterExpenses();              // apply filter aktif biar konsisten
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pengeluaran "${e.title}" berhasil dihapus.'),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pengeluaran "${e.title}" berhasil dihapus.'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['Semua','Makanan','Transportasi','Hiburan','Komunikasi','Pendidikan'];
+    // ✅ gunakan const list yang sudah di-cache
+    final categories = _categoriesConst;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengeluaran Advanced'), backgroundColor: Colors.blueAccent),
+      appBar: AppBar(
+        title: const Text('Pengeluaran Advanced'),
+        backgroundColor: Colors.blueAccent,
+      ),
       body: Column(
         children: [
+          // 🔍 Search bar (dengan debounce)
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -122,9 +148,11 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (_) => _filterExpenses(),
+              onChanged: _onSearchChanged,
             ),
           ),
+
+          // 🏷️ Category filter (horizontal)
           SizedBox(
             height: 50,
             child: ListView(
@@ -135,11 +163,18 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
                 child: FilterChip(
                   label: Text(c),
                   selected: selectedCategory == c,
-                  onSelected: (_) { setState(() { selectedCategory = c; _filterExpenses(); }); },
+                  onSelected: (_) {
+                    setState(() {
+                      selectedCategory = c;
+                      _filterExpenses();
+                    });
+                  },
                 ),
               )).toList(),
             ),
           ),
+
+          // 📊 Statistics summary
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -151,15 +186,19 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
               ],
             ),
           ),
+
+          // 📜 Expense list
           Expanded(
             child: filteredExpenses.isEmpty
                 ? const Center(child: Text('Tidak ada pengeluaran ditemukan'))
-                : ListView.builder(
+                : ListView.separated(
                     itemCount: filteredExpenses.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final e = filteredExpenses[i];
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        key: ValueKey(e.id ?? '${e.title}-${e.date.toIso8601String()}'),
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: _color(e.category),
@@ -172,11 +211,15 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
                             children: [
                               Text(
                                 e.formattedTotal,
-                                style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                                 onPressed: () => _deleteExpense(e),
+                                tooltip: 'Hapus',
                               ),
                             ],
                           ),
@@ -191,9 +234,9 @@ class _AdvancedExpenseListScreenState extends State<AdvancedExpenseListScreen> {
   }
 
   Widget _statCard(String label, String value) => Column(
-    children: [
-      Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-    ],
-  );
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      );
 }

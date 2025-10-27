@@ -1,3 +1,4 @@
+import '../routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 import 'home_screen.dart';
@@ -31,10 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _userService.login(email: _email.text.trim(), password: _password.text.trim());
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

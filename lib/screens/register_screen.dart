@@ -1,3 +1,4 @@
+import '../routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 import 'login_screen.dart';
@@ -37,11 +38,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
       );
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
+      Navigator.pushNamedAndRemoveUntil(
+  context,
+  AppRoutes.login,
+  (_) => false,
+);
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

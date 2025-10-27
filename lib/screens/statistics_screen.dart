@@ -20,6 +20,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   double avgDaily = 0;
   Map<String, double> categoryTotals = {};
 
+  // 🔹 Warna kategori konsisten (const map)
+  static const Map<String, Color> _catColors = {
+    'makanan': Colors.orange,
+    'transportasi': Colors.blue,
+    'hiburan': Colors.purple,
+    'komunikasi': Colors.teal,
+    'pendidikan': Colors.green,
+    // sisanya → default grey
+  };
+
   @override
   void initState() {
     super.initState();
@@ -34,32 +44,80 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     });
   }
 
+  /// ==========================
+  ///  Perhitungan & Utilities
+  /// ==========================
+
   void _calculateStats() {
-    total = _expenses.fold(0, (sum, e) => sum + e.total);
+    // Total semua pengeluaran
+    total = _expenses.fold<double>(0, (sum, e) => sum + e.total);
 
-    // Hitung total per kategori
-    categoryTotals.clear();
-    for (var e in _expenses) {
-      categoryTotals[e.category] =
-          (categoryTotals[e.category] ?? 0) + e.total;
-    }
+    // Total per kategori (pakai util)
+    final raw = _totalsByCategory(_expenses);
 
-    // Rata-rata pengeluaran harian
+    // Gabungkan kategori kecil -> "Lainnya" (mis. < 5% total)
+    categoryTotals = _groupSmall(raw, thresholdPct: 0.05);
+
+    // Rata-rata harian (berdasarkan hari unik yang ada transaksi)
     final uniqueDays = _expenses
-        .map((e) => "${e.date.year}-${e.date.month}-${e.date.day}")
+        .map((e) => DateTime(e.date.year, e.date.month, e.date.day))
         .toSet();
-    avgDaily = total / (uniqueDays.isNotEmpty ? uniqueDays.length : 1);
+    final activeDays = uniqueDays.isNotEmpty ? uniqueDays.length : 1;
+    avgDaily = total / activeDays;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final sections = categoryTotals.entries.map((entry) {
-      final color = _getColorForCategory(entry.key);
+  Map<String, double> _totalsByCategory(List<Expense> list) {
+    final map = <String, double>{};
+    for (final e in list) {
+      map[e.category] = (map[e.category] ?? 0) + e.total;
+    }
+    return map;
+  }
+
+  /// Gabungkan kategori yang porsinya kecil ke "Lainnya"
+  Map<String, double> _groupSmall(Map<String, double> input, {double thresholdPct = 0.05}) {
+    if (input.isEmpty) return input;
+
+    final sum = input.values.fold<double>(0, (s, v) => s + v);
+    if (sum <= 0) return input;
+
+    final big = <String, double>{};
+    double others = 0;
+
+    input.forEach((k, v) {
+      final pct = v / sum;
+      if (pct >= thresholdPct) {
+        big[k] = v;
+      } else {
+        others += v;
+      }
+    });
+
+    if (others > 0) {
+      big['Lainnya'] = (big['Lainnya'] ?? 0) + others;
+    }
+    return big;
+  }
+
+  Color _colorForCategory(String cat) {
+    final key = cat.toLowerCase();
+    return _catColors[key] ?? Colors.grey;
+  }
+
+  List<PieChartSectionData> _buildPieSections(Map<String, double> data) {
+    final sum = data.values.fold<double>(0, (s, v) => s + v);
+    if (sum <= 0) return [];
+
+    // Tampilkan label persentase (biar pendek & gak numpuk)
+    return data.entries.map((e) {
+      final value = e.value;
+      final pct = (value / sum * 100);
+      final title = '${pct.toStringAsFixed(1)}%';
       return PieChartSectionData(
-        value: entry.value,
-        color: color,
+        value: value,
+        color: _colorForCategory(e.key),
         radius: 80,
-        title: '${entry.key}\n${formatCurrency(entry.value)}',
+        title: title,
         titleStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -67,6 +125,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         ),
       );
     }).toList();
+  }
+
+  Widget _buildLegend(Map<String, double> data) {
+    final entries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value)); // besar → kecil
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: entries.map((e) {
+        final color = _colorForCategory(e.key);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text('${e.key} — ${formatCurrency(e.value)}'),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pieSections = _buildPieSections(categoryTotals);
 
     return Scaffold(
       appBar: AppBar(
@@ -82,21 +165,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // 💰 Total dan Rata-rata
+                    // 💰 Ringkasan
                     Card(
                       color: Colors.blue[50],
                       elevation: 3,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            const Text(
-                              'Ringkasan Keuangan',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
+                            const Text('Ringkasan Keuangan',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -104,19 +183,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 Column(
                                   children: [
                                     const Text('Total'),
-                                    Text(formatCurrency(total),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16)),
+                                    Text(
+                                      formatCurrency(total),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
                                   ],
                                 ),
                                 Column(
                                   children: [
                                     const Text('Rata-rata Harian'),
-                                    Text(formatCurrency(avgDaily),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16)),
+                                    Text(
+                                      formatCurrency(avgDaily),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -127,57 +206,44 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // 🥧 Grafik Pie Chart
+                    // 🥧 Pie + Legend
                     Card(
                       elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            const Text(
-                              'Distribusi Pengeluaran per Kategori',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
+                            const Text('Distribusi Pengeluaran per Kategori',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
                             SizedBox(
                               height: 280,
                               child: PieChart(
                                 PieChartData(
-                                  sections: sections,
+                                  sections: pieSections,
                                   centerSpaceRadius: 40,
                                   sectionsSpace: 2,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            _buildLegend(categoryTotals), // ✅ legend rapi & jelas
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // 📋 List Detail per Kategori
-                    ...categoryTotals.entries.map((entry) {
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor:
-                                _getColorForCategory(entry.key).withOpacity(0.8),
-                            child: const Icon(Icons.category,
-                                color: Colors.white, size: 20),
-                          ),
-                          title: Text(entry.key),
-                          trailing: Text(
-                            formatCurrency(entry.value),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    // 📋 Detail per Kategori (ListView.separated)
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: _buildCategoryList(categoryTotals),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -185,21 +251,33 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  // 🔹 Warna unik tiap kategori
-  Color _getColorForCategory(String category) {
-    switch (category.toLowerCase()) {
-      case 'makanan':
-        return Colors.orangeAccent;
-      case 'transportasi':
-        return Colors.blueAccent;
-      case 'hiburan':
-        return Colors.purpleAccent;
-      case 'komunikasi':
-        return Colors.green;
-      case 'pendidikan':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
+  /// List detail kategori dengan separator rapi
+  Widget _buildCategoryList(Map<String, double> data) {
+    final entries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return SizedBox(
+      height: 56.0 * entries.length.clamp(0, 8), // batasi tinggi agar tidak terlalu panjang
+      child: ListView.separated(
+        physics: const NeverScrollableScrollPhysics(), // ikut scroll parent
+        itemCount: entries.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (_, i) {
+          final e = entries[i];
+          final color = _colorForCategory(e.key);
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: color.withOpacity(0.9),
+              child: const Icon(Icons.category, color: Colors.white, size: 18),
+            ),
+            title: Text(e.key),
+            trailing: Text(
+              formatCurrency(e.value),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
