@@ -1,8 +1,11 @@
-import '../routes/app_routes.dart';
 import 'package:flutter/material.dart';
+
+import '../routes/app_routes.dart';
 import '../services/user_service.dart';
-import 'home_screen.dart';
 import 'register_screen.dart';
+
+// ⬅️ akses AppServices (static) untuk set userId API setelah login
+import '../main.dart' show AppServices;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,27 +15,44 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController();     // ganti: pakai email/username
+  final _email = TextEditingController();     // bisa email / username
   final _password = TextEditingController();
   final _userService = UserService();
 
   bool _loading = false;
 
   Future<void> _login() async {
-    // optional: validasi sederhana
     if (_email.text.trim().isEmpty || _password.text.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Email/Username dan Password wajib diisi')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email/Username dan Password wajib diisi')),
+      );
       return;
     }
 
     setState(() => _loading = true);
     try {
-      // UserService.login akan set currentUserId ketika sukses
-      await _userService.login(email: _email.text.trim(), password: _password.text.trim());
+      // 1) proses login -> UserService akan set currentUserId
+      await _userService.login(
+        email: _email.text.trim(),
+        password: _password.text.trim(),
+      );
+
+      // 2) pastikan ExpenseApi ikut pakai userId yang baru
+      //    (pilih salah satu cara di bawah)
+
+      // Cara A (rekomendasi, bikin instance API fresh sesuai user):
+      await AppServices.refreshUserContext();
+
+      // Cara B (kalau kamu pakai ExpenseApi dengan setUser):
+      // final uid = await _userService.getCurrentUserId() ?? 0;
+      // AppServices.expenseApi?.setUser(uid);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      _email.clear();
+      _password.clear();
+
+      // 3) pindah ke Home
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,6 +61,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
   }
 
   @override
@@ -77,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     TextField(
                       controller: _email,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: "Email / Username",
                         border: OutlineInputBorder(),
@@ -86,11 +114,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextField(
                       controller: _password,
                       obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(),
                       decoration: const InputDecoration(
                         labelText: "Password",
                         border: OutlineInputBorder(),
                       ),
-                      onSubmitted: (_) => _login(),
                     ),
                     const SizedBox(height: 25),
                     ElevatedButton.icon(
@@ -100,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.login),
-                      label: const Text("Login"),
+                      label: Text(_loading ? "Memproses..." : "Login"),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(45),
                       ),

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../services/expense_service.dart';
+import '../services/user_service.dart';
+
 import '../models/expense.dart';
+
+// Screens
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'login_screen.dart';
@@ -9,11 +14,11 @@ import 'add_expense_screen.dart';
 import 'statistics_screen.dart';
 import 'category_screen.dart';
 import 'export_screen.dart';
-import '../utils/currency_utils.dart';
-import '../utils/date_utils.dart';
+import 'api_data_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -21,28 +26,45 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ExpenseService _svc = ExpenseService();
   List<Expense> _expenses = [];
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadLocalOnly(); // ✅ hanya dari Hive lokal
   }
 
-  Future<void> _load() async {
-    final data = await _svc.getAllExpenses();
-    setState(() => _expenses = data);
+  Future<void> _loadLocalOnly() async {
+    setState(() => _loading = true);
+    try {
+      final cached = await _svc.getAllExpenses();
+      if (!mounted) return;
+      setState(() => _expenses = cached);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalItems = _expenses.length;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Menu Utama'),
         backgroundColor: Colors.blueAccent,
         actions: [
           IconButton(
+            tooltip: 'Refresh Data Lokal',
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadLocalOnly,
+          ),
+          IconButton(
+            tooltip: 'Logout',
             icon: const Icon(Icons.logout),
-            onPressed: () {
+            onPressed: () async {
+              await UserService().logout();
+              if (!mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -52,15 +74,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blueAccent,
         child: const Icon(Icons.add),
         onPressed: () async {
-          await Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
-          _load();
+          final changed = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+          );
+          if (changed == true) _loadLocalOnly();
         },
       ),
+
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -70,104 +96,95 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            const Text(
-              'Menu Utama',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _menuCard(
-                    context,
-                    title: 'Pengeluaran',
-                    color1: Colors.indigo,
-                    color2: Colors.blueAccent,
-                    icon: Icons.wallet_outlined,
-                    page: const AdvancedExpenseListScreen(),
+                  Row(
+                    children: [
+                      const Text(
+                        'Menu Utama',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Chip(
+                        label: Text('$totalItems item'),
+                        avatar: const Icon(Icons.receipt_long, size: 18),
+                      ),
+                    ],
                   ),
-                  _menuCard(
-                    context,
-                    title: 'Profil',
-                    color1: Colors.blueAccent,
-                    color2: Colors.cyan,
-                    icon: Icons.person_outline,
-                    page: const ProfileScreen(),
-                  ),
-                  _menuCard(
-                    context,
-                    title: 'Statistik',
-                    color1: Colors.pinkAccent,
-                    color2: Colors.orange,
-                    icon: Icons.bar_chart,
-                    page: const StatisticsScreen(),
-                  ),
-                  _menuCard(
-                    context,
-                    title: 'Kategori',
-                    color1: Colors.teal,
-                    color2: Colors.lightBlueAccent,
-                    icon: Icons.category_outlined,
-                    page: const CategoryScreen(),
-                  ),
-                  _menuCard(
-                    context,
-                    title: 'Export Data',
-                    color1: Colors.orange,
-                    color2: Colors.amber,
-                    icon: Icons.download_outlined,
-                    page: const ExportScreen(),
-                  ),
-                  _menuCard(
-                    context,
-                    title: 'Pengaturan',
-                    color1: Colors.indigo,
-                    color2: Colors.deepPurple,
-                    icon: Icons.settings,
-                    page: const SettingsScreen(),
+
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _menu('Pengeluaran', Icons.wallet_outlined, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const AdvancedExpenseListScreen()),
+                          );
+                        }),
+                        _menu('Profil', Icons.person_outline, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                          );
+                        }),
+                        _menu('Statistik', Icons.bar_chart, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                          );
+                        }),
+                        _menu('Kategori', Icons.category_outlined, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const CategoryScreen()),
+                          );
+                        }),
+                        _menu('Export Data', Icons.download_outlined, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const ExportScreen()),
+                          );
+                        }),
+
+                        /// ✅ Menu ke API Bab 8 (READ ONLY)
+                        _menu('Data API', Icons.cloud, () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ApiDataScreen()),
+                          );
+                        }),
+
+                        _menu('Pengaturan', Icons.settings, () {
+                          Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _menuCard(BuildContext context,
-      {required String title,
-      required IconData icon,
-      required Color color1,
-      required Color color2,
-      Widget? page}) {
+  Widget _menu(String title, IconData icon, VoidCallback onTap) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => page!),
-      ),
+      onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [color1, color2],
+            colors: [Colors.blueAccent, Colors.indigo],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
-            BoxShadow(
-              color: color1.withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(2, 3),
-            ),
+            BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 6, offset: const Offset(2, 3)),
           ],
         ),
         child: Column(
@@ -177,11 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
+              maxLines: 2,
             ),
           ],
         ),

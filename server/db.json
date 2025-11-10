@@ -1,0 +1,126 @@
+{
+  "expenses": [
+    {
+      "id": "1",
+      "title": "Ayam Geprek",
+      "description": "Makan siang",
+      "category": "Makanan",
+      "price": 18000,
+      "quantity": 1,
+      "date": "2025-10-26T10:00:00.000Z",
+      "userId": "local"
+    },
+    {
+      "id": "fc5d",
+      "title": "burger",
+      "description": "",
+      "category": "Makanan",
+      "price": 7000,
+      "quantity": 19,
+      "date": "2025-10-28T02:02:52.865",
+      "userId": 0
+    },
+    {
+      "id": "e6f9",
+      "title": "beat",
+      "description": "",
+      "category": "Transportasi",
+      "price": 16000000,
+      "quantity": 9,
+      "date": "2025-10-27T00:00:00.000",
+      "userId": 0
+    },
+    {
+      "id": "0",
+      "title": "burger",
+      "description": "",
+      "category": "Makanan",
+      "price": 7000,
+      "quantity": 19,
+      "date": "2025-10-28T02:02:52.865",
+      "userId": 0
+    },
+    {
+      "id": "0",
+      "title": "beat",
+      "description": "",
+      "category": "Transportasi",
+      "price": 16000000,
+      "quantity": 9,
+      "date": "2025-10-27T00:00:00.000",
+      "userId": 0
+    },
+    {
+      "id": "fa1e",
+      "title": "pangsit",
+      "description": "",
+      "category": "Makanan",
+      "price": 5000,
+      "quantity": 15,
+      "date": "2025-11-01T16:51:36.249",
+      "userId": 0
+    },
+    {
+      "id": "da30",
+      "title": "pangsit",
+      "description": "",
+      "category": "Makanan",
+      "price": 5000,
+      "quantity": 15,
+      "date": "2025-11-01T16:52:43.593",
+      "userId": 0
+    },
+    {
+      "id": "cc43",
+      "title": "vario",
+      "description": "",
+      "category": "Transportasi",
+      "price": 26000000,
+      "quantity": 3,
+      "date": "2025-10-31T00:00:00.000",
+      "userId": 0
+    },
+    {
+      "id": "55a2",
+      "title": "supra",
+      "description": "",
+      "category": "Transportasi",
+      "price": 5000000,
+      "quantity": 2,
+      "date": "2025-11-01T19:17:05.568",
+      "userId": 0
+    }
+  ],
+  "categories": [
+    {
+      "name": "Makanan",
+      "icon": "🍔",
+      "color": "#FF9800",
+      "id": "290c"
+    },
+    {
+      "name": "Transportasi",
+      "icon": "🚗",
+      "color": "#2196F3",
+      "id": "4d3d"
+    },
+    {
+      "name": "Hiburan",
+      "icon": "🎮",
+      "color": "#9C27B0",
+      "id": "53ae"
+    },
+    {
+      "name": "Pendidikan",
+      "icon": "🎓",
+      "color": "#4CAF50",
+      "id": "b262"
+    },
+    {
+      "name": "Komunikasi",
+      "icon": "📱",
+      "color": "#00BCD4",
+      "id": "a0bd"
+    }
+  ]
+}

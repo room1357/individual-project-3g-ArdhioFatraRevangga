@@ -1,27 +1,23 @@
 import 'package:intl/intl.dart';
 
 class Expense {
-  final dynamic id;          // Hive key
-  final int userId;          // 🔹 pemilik
+  final dynamic id;            // bisa null / int / String (aman untuk API & Hive)
   final String title;
   final String description;
-  final String category;     // nama kategori (punya user)
+  final String category;
   final double price;
   final int quantity;
   final DateTime date;
-  final List<int> sharedWith; // 🔹 userId lain yang dibagi
 
   Expense({
     this.id,
-    required this.userId,
     required this.title,
     required this.description,
     required this.category,
     required this.price,
     required this.quantity,
-    required this.date,
-    this.sharedWith = const [],
-  });
+    DateTime? date,
+  }) : date = date ?? DateTime.now();
 
   double get total => price * quantity;
 
@@ -35,42 +31,44 @@ class Expense {
     return f.format(date);
   }
 
-  // Back-compat
-  String get formattedAmount => formattedTotal;
+  // ---------------- Helpers parsing ----------------
+  static int _asInt(dynamic v, {int fallback = 0}) {
+    if (v == null) return fallback;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v.trim()) ?? fallback;
+    return fallback;
+  }
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'userId': userId,
-    'title': title,
-    'description': description,
-    'category': category,
-    'price': price,
-    'quantity': quantity,
-    'date': date.toIso8601String(),
-    'sharedWith': sharedWith,
-  };
+  static double _asDouble(dynamic v, {double fallback = 0.0}) {
+    if (v == null) return fallback;
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v.trim()) ?? fallback;
+    return fallback;
+  }
 
-  factory Expense.fromMap(Map<String, dynamic> m) => Expense(
-    id: m['id'],
-    userId: (m['userId'] ?? 0) is String ? int.tryParse(m['userId']) ?? 0 : (m['userId'] ?? 0),
-    title: m['title'],
-    description: m['description'] ?? '',
-    category: m['category'] ?? '',
-    price: (m['price'] ?? 0).toDouble(),
-    quantity: (m['quantity'] ?? 1).toInt(),
-    date: DateTime.tryParse(m['date'] ?? '') ?? DateTime.now(),
-    sharedWith: (m['sharedWith'] is List) ? List<int>.from(m['sharedWith']) : <int>[],
-  );
+  static DateTime _asDate(dynamic v) {
+    if (v == null) return DateTime.now();
+    return DateTime.tryParse(v.toString()) ?? DateTime.now();
+  }
 
-  Expense copyWith({dynamic id}) => Expense(
-    id: id ?? this.id,
-    userId: userId,
-    title: title,
-    description: description,
-    category: category,
-    price: price,
-    quantity: quantity,
-    date: date,
-    sharedWith: sharedWith,
-  );
+  static String _asString(dynamic v, {String fallback = ''}) {
+    if (v == null) return fallback;
+    return v.toString();
+  }
+
+  // ---------------- fromJson (API) ----------------
+  factory Expense.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id'];
+    return Expense(
+      id: rawId, // biarkan dinamis; tidak dipaksa ke int
+      title: _asString(json['title']),
+      description: _asString(json['description']),
+      category: _asString(json['category']),
+      price: _asDouble(json['price']),
+      quantity: _asInt(json['quantity'], fallback: 1),
+      date: _asDate(json['date']),
+    );
+  }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../services/expense_service.dart';
-import '../services/user_service.dart'; // pastikan ada di atas
+import '../services/user_service.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -29,86 +29,87 @@ class _CategoryScreenState extends State<CategoryScreen> {
     setState(() => _categories = cats);
   }
 
-  // 🔹 Tambah atau Edit Kategori
-  void _showCategoryDialog({Category? category}) {
-    bool isEdit = category != null;
-    if (isEdit) {
-      _nameController.text = category.name;
-      _iconController.text = category.icon;
-      _colorController.text = category.color;
-    } else {
-      _nameController.clear();
-      _iconController.clear();
-      _colorController.clear();
-    }
+  /// 🔹 Show dialog tambah / edit kategori
+  void _showCategoryDialog({Category? category}) async {
+    final isEdit = category != null;
+
+    _nameController.text = category?.name ?? '';
+    _iconController.text = category?.icon ?? '';
+    _colorController.text = category?.color ?? '';
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Text(isEdit ? 'Edit Kategori' : 'Tambah Kategori'),
-        content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Kategori',
-                  border: OutlineInputBorder(),
-                ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nama Kategori',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _iconController,
-                decoration: const InputDecoration(
-                  labelText: 'Ikon (misal: 🎮 / 🍔 / 🚗)',
-                  border: OutlineInputBorder(),
-                ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _iconController,
+              decoration: const InputDecoration(
+                labelText: 'Ikon (misal: 🎮 / 🍔 / 🚗)',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _colorController,
-                decoration: const InputDecoration(
-                  labelText: 'Warna (#hex)',
-                  border: OutlineInputBorder(),
-                ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _colorController,
+              decoration: const InputDecoration(
+                labelText: 'Warna (#2196F3)',
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
             child: const Text('Batal'),
+            onPressed: () => Navigator.pop(context),
           ),
           ElevatedButton(
+            child: Text(isEdit ? 'Simpan' : 'Tambah'),
             onPressed: () async {
               if (_nameController.text.trim().isEmpty) return;
 
-              final userId = await UserService().getCurrentUserId(); // ambil id user aktif
-              final newCategory = Category(
-                userId: userId!, // ✅ tambahkan ini
-                name: _nameController.text,
-                icon: _iconController.text.isEmpty ? '🏷️' : _iconController.text,
-                color: _colorController.text.isEmpty ? '#2196F3' : _colorController.text,
+              final userId = await UserService().getCurrentUserId() ?? 0;
+
+              final updatedCategory = Category(
+                id: category?.id,
+                userId: userId,
+                name: _nameController.text.trim(),
+                icon: _iconController.text.trim().isEmpty
+                    ? '🏷️'
+                    : _iconController.text.trim(),
+                color: _colorController.text.trim().isEmpty
+                    ? '#2196F3'
+                    : _colorController.text.trim(),
               );
 
-              await _expenseService.insertCategory(newCategory);
+              if (isEdit) {
+                await _expenseService.updateCategory(updatedCategory);
+              } else {
+                await _expenseService.insertCategory(updatedCategory);
+              }
+
               Navigator.pop(context);
               _loadCategories();
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-            ),
-            child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah'),
           ),
         ],
       ),
     );
   }
 
-  // 🔻 Hapus kategori
-  void _deleteCategory(int id) async {
+  Future<void> _deleteCategory(dynamic id) async {
     await _expenseService.deleteCategory(id);
     _loadCategories();
   }
@@ -125,12 +126,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
           : ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final cat = _categories[index];
+              itemBuilder: (_, i) {
+                final cat = _categories[i];
                 return Card(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: _parseColor(cat.color),
@@ -138,7 +138,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     ),
                     title: Text(cat.name),
                     trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.min, // ⬅ taruh di Row, bukan di IconButton
                       children: [
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.orange),
@@ -150,6 +150,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         ),
                       ],
                     ),
+
                   ),
                 );
               },
@@ -162,11 +163,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
-  // 🔹 Konversi string warna "#RRGGBB" ke Color Flutter
-  Color _parseColor(String hexColor) {
+  Color _parseColor(String hex) {
     try {
-      return Color(int.parse(hexColor.replaceFirst('#', '0xff')));
-    } catch (e) {
+      return Color(int.parse(hex.replaceFirst('#', '0xff')));
+    } catch (_) {
       return Colors.blueAccent;
     }
   }

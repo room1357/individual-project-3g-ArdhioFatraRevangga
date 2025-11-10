@@ -1,14 +1,17 @@
+// 📄 lib/main.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'routes/app_routes.dart';
 import 'services/user_service.dart';
+import 'services/expense_api.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🗃️ Hive init & open boxes
+  // 🗃️ Hive init & open boxes (lokal)
   await Hive.initFlutter();
   await Hive.openBox('users');
   await Hive.openBox('expenses');
@@ -17,7 +20,45 @@ Future<void> main() async {
   // 🌏 Locale Indonesia (tanggal, dll.)
   await initializeDateFormatting('id_ID', null);
 
+  // 🧩 Inisialisasi layanan global (API, user context)
+  await _initAppServices();
+
   runApp(const MyApp());
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// AppServices: akses cepat ke ExpenseApi di seluruh app (Bab 8 style)
+/// ─────────────────────────────────────────────────────────────────────────────
+class AppServices {
+  AppServices._();
+
+  static late final ExpenseApi expenseApi; // non-null (di-init sekali)
+
+  /// Panggil sekali di startup
+  static Future<void> init() async {
+    expenseApi = ExpenseApi(); // ✅ tanpa ApiClient
+
+    // Set userId aktif (0 jika belum login)
+    final uid = await UserService().getCurrentUserId() ?? 0;
+    expenseApi.setUser(uid);   // ✅ Bab 8: filter data per user di API
+  }
+
+  /// Panggil SETIAP kali user login/logout supaya userId di API ikut berubah
+  static Future<void> refreshUserContext() async {
+    final uid = await UserService().getCurrentUserId() ?? 0;
+    expenseApi.setUser(uid);
+  }
+}
+
+Future<void> _initAppServices() async {
+  await AppServices.init();
+
+  // (Opsional) kalau kamu punya SyncService, jalankan background sync di sini.
+  // unawaited(Future(() async {
+  //   try {
+  //     await SyncService(remote: AppServices.expenseApi).syncAll();
+  //   } catch (_) {}
+  // }));
 }
 
 class MyApp extends StatelessWidget {
@@ -32,16 +73,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
       ),
-      // ✅ Daftarin semua Named Routes di satu tempat
       routes: AppRoutes.buildRoutes(),
-      // 🚀 Mulai dari SplashRouter (cek login → redirect ke Login/Home)
       home: const _SplashRouter(),
     );
   }
 }
 
-/// Splash ringan yang cek status login lalu redirect pakai Named Routes.
-/// Menghindari FutureBuilder di MaterialApp (lebih rapi & aman dari rebuild).
 class _SplashRouter extends StatefulWidget {
   const _SplashRouter({super.key});
 
@@ -49,20 +86,37 @@ class _SplashRouter extends StatefulWidget {
   State<_SplashRouter> createState() => _SplashRouterState();
 }
 
-class _SplashRouterState extends State<_SplashRouter> {
+class _SplashRouterState extends State<_SplashRouter> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _decideStart();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // (Opsional) saat app resume bisa trigger background sync
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // if (state == AppLifecycleState.resumed) {
+    //   unawaited(_tryBackgroundSync());
+    // }
   }
 
   Future<void> _decideStart() async {
     final userSvc = UserService();
     final id = await userSvc.getCurrentUserId();
 
+    // Pastikan context API sesuai user aktif saat app dibuka
+    await AppServices.refreshUserContext();
+
     if (!mounted) return;
 
-    // 🔁 Bersihkan stack & arahkan sesuai status login
     if (id != null) {
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
     } else {
@@ -72,9 +126,6 @@ class _SplashRouterState extends State<_SplashRouter> {
 
   @override
   Widget build(BuildContext context) {
-    // Splash sederhana
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
